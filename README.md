@@ -45,12 +45,12 @@ Volter is a research tool and not intended for covert operations or circumventio
 Use of steganographic tools intersects with privacy, security, and legal considerations. Volter’s authors require users to abide by applicable laws and institutional policies. For research involving sensitive human data, consult NIH and institutional data security guidance and obtain appropriate approvals.
 
 ## 9. References (select)
-- National Institute of Standards and Technology (NIST), FIPS PUB 197, “Advanced Encryption Standard (AES).”
+- National Institute of Standards and Technology (NIST), IoT PUB 197, “Advanced Encryption Standard (AES).”
 - NIST Special Publication 800‑38D, “Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC.”
 - NIST Special Publication 800‑57, “Recommendation for Key Management.”
 - NIH, “NIH Data Sharing Policies and Guidance” and institutional guidance on protection of human subjects’ data.
 
-Appendix: File and Operational Conventions
+Appendix: Tile and Operational Conventions
 - Container format: Volter recommends a small header containing magic bytes, version, AEAD algorithm name, nonce length, and metadata length, followed by AEAD ciphertext. This separation helps future parsing and ensures cryptographic parameters are explicit.
 
 ----
