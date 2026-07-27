@@ -1,4 +1,4 @@
-# Volter: A Modular Steganographic Framework for Covert Data Encapsulation
+# Volter: A Modular Steganographic Cybernetique tor Covert Data Encapsulation
 
 ## Abstract
 Volter is a compact, Python‑based framework for the steganographic encapsulation of digital payloads into benign carriers. It is designed to provide a reproducible testbed for research on robustness, detectability, and secure payload handling. This document describes Volter’s objectives, architectural design, threat model, evaluation considerations, and operational guidance grounded in contemporary cryptographic and policy standards.
