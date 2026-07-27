@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NQBAAT — Command Structure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════
+   TOKENS
+══════════════════════════════════════════════════════ */
+:root {
+  --bg:      #070F1C;
+  --bg2:     #0C1828;
+  --panel:   #0F2035;
+  --border:  #1E3A5A;
+  --dim:     #2A4A6A;
+  --gold:    #C8A84B;
+  --gold2:   #E6C96A;
+  --army:    #4A7A3A;
+  --army2:   #6AAA52;
+  --navy:    #1A6AAE;
+  --navy2:   #4A9AD4;
+  --af:      #2A5A9E;
+  --af2:     #5A8ACE;
+  --teal:    #1ABAAA;
+  --teal2:   #3ADACE;
+  --red:     #C03838;
+  --red2:    #E06060;
+  --ice:     #7AB4CC;
+  --grey:    #5A8AA8;
+  --text:    #C8D8E8;
+  --muted:   #4A6880;
+  --white:   #DDE8F0;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── GRID BACKGROUND ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -60px;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+  animation: gridDrift 22s linear infinite;
+}
+@keyframes gridDrift { to { transform: translate(36px,36px); } }
+
+/* ── SCAN LINE ── */
+body::after {
+  content: '';
+  position: fixed;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(26,186,170,0.2), rgba(200,168,75,0.25), rgba(26,186,170,0.2), transparent);
+  z-index: 600;
+  pointer-events: none;
+  animation: scanLine 9s linear infinite;
+}
+@keyframes scanLine {
+  0%   { top: -2px; opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 0.5; }
+  100% { top: 100vh; opacity: 0; }
+}
+
+/* ── CANVAS ── */
+#dc { position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.4; }
+
+/* ── LAYOUT ── */
+.wrap {
+  position: relative;
+  z-index: 2;
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 0 16px 60px;
+}
+
+/* ══════════════════════════════════════════════════════
+   DESIGNATION BANNER
+══════════════════════════════════════════════════════ */
+.desig-banner {
+  background: var(--bg2);
+  border-bottom: 2px solid var(--teal);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  flex-wrap: wrap;
+}
+
+.desig-code {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--teal);
+  letter-spacing: 6px;
+  text-shadow: 0 0 24px rgba(26,186,170,0.5);
+  animation: tealBreath 3s ease-in-out infinite;
+}
+@keyframes tealBreath {
+  0%,100% { text-shadow: 0 0 18px rgba(26,186,170,0.4); }
+  50%     { text-shadow: 0 0 36px rgba(26,186,170,0.75); }
+}
+
+.desig-full {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--grey);
+  letter-spacing: 2px;
+  line-height: 1.7;
+}
+.desig-full span { color: var(--teal); }
+
+.desig-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+}
+.desig-clock { color: var(--gold); }
+
+.status-pill {
+  border: 1px solid var(--teal);
+  color: var(--teal);
+  padding: 2px 8px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  animation: pillPulse 2s ease-in-out infinite;
+}
+@keyframes pillPulse {
+  0%,100% { border-color: var(--teal); box-shadow: 0 0 0 rgba(26,186,170,0); }
+  50%     { border-color: var(--teal2); box-shadow: 0 0 8px rgba(26,186,170,0.3); }
+}
+
+/* ══════════════════════════════════════════════════════
+   HEADER BLOCK
+══════════════════════════════════════════════════════ */
+.header-block {
+  background: linear-gradient(135deg, var(--bg2) 60%, #0A1E30 100%);
+  border: 1px solid var(--border);
+  border-top: none;
+  padding: 28px 28px 24px;
+  margin-bottom: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: center;
+}
+
+.header-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.header-sub {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ice);
+  line-height: 1.4;
+}
+
+.lineage {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.lnode {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8.5px;
+  padding: 2px 7px;
+  letter-spacing: 1.5px;
+  border: 1px solid var(--dim);
+  color: var(--grey);
+}
+.lnode.active { border-color: var(--teal); color: var(--teal); }
+.lnode-arrow { color: var(--muted); font-size: 10px; align-self: center; }
+
+.header-stats {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--grey);
+  line-height: 2;
+  text-align: right;
+}
+.header-stats .v { color: var(--gold2); }
+
+/* ══════════════════════════════════════════════════════
+   STRUCTURE SECTIONS
+══════════════════════════════════════════════════════ */
+
+/* vertical connector line */
+.v-conn {
+  width: 1px;
+  background: linear-gradient(to bottom, var(--teal), var(--gold), var(--dim));
+  margin: 0 auto;
+  position: relative;
+}
+.v-conn.short { height: 24px; }
+.v-conn.med   { height: 36px; }
+
+/* animated dot that travels down the connector */
+.v-conn::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 0;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 6px var(--teal);
+  animation: connTravel 3s linear infinite;
+}
+@keyframes connTravel {
+  0%   { top: 0; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 0.8; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ══════════════════════════════════════════════════════
+   LEVEL LABELS
+══════════════════════════════════════════════════════ */
+.level-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  margin-bottom: 0;
+}
+.level-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2.5px;
+  color: var(--navy2);
+  border-left: 2px solid var(--navy2);
+  padding-left: 7px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.level-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border), transparent);
+}
+
+/* ══════════════════════════════════════════════════════
+   COMMAND COUNCIL
+══════════════════════════════════════════════════════ */
+.council-row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-bottom: 0;
+}
+
+.council-node {
+  background: var(--panel);
+  padding: 16px 18px;
+  position: relative;
+  transition: background 0.2s;
+}
+.council-node:hover { background: #132A44; }
+
+.cn-rank {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8.5px;
+  color: var(--grey);
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+.cn-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1.5px;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+.cn-body {
+  font-size: 12px;
+  color: #85A8C0;
+  line-height: 1.4;
+}
+.cn-source {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  color: var(--muted);
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+
+.council-node.director {
+  border-left: 3px solid var(--gold);
+}
+.council-node.director .cn-title { color: var(--gold2); font-size: 13px; }
+
+/* ══════════════════════════════════════════════════════
+   DIVISION CARDS (expandable)
+══════════════════════════════════════════════════════ */
+.divisions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.div-card {
+  background: var(--panel);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  border-left: 3px solid transparent;
+}
+.div-card:hover { background: #132A44; }
+.div-card.open  { border-left-color: var(--gold); }
+
+.div-head {
+  padding: 14px 16px;
+  user-select: none;
+  position: relative;
+}
+
+.div-icon {
+  font-size: 18px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.div-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  color: var(--grey);
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+.div-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ice);
+  line-height: 1.3;
+  margin-bottom: 5px;
+}
+
+.div-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  border: 1px solid;
+  padding: 1px 5px;
+  letter-spacing: 1.5px;
+  display: inline-block;
+}
+
+.div-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 14px;
+  color: var(--muted);
+  transition: transform 0.25s, color 0.2s;
+}
+.div-card.open .div-toggle { transform: rotate(90deg); color: var(--gold); }
+
+/* SUB-UNITS */
+.div-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.45s ease, opacity 0.3s ease;
+  opacity: 0;
+  border-top: 1px solid transparent;
+}
+.div-card.open .div-body {
+  max-height: 600px;
+  opacity: 1;
+  border-top-color: var(--border);
+}
+
+.sub-unit {
+  padding: 9px 16px 9px 20px;
+  border-bottom: 1px solid var(--bg2);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  transition: background 0.15s;
+}
+.sub-unit:last-child { border-bottom: none; }
+.sub-unit:hover { background: rgba(255,255,255,0.025); }
+
+.su-bullet {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--teal);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.su-text {
+  font-size: 12px;
+  color: #85A8C0;
+  line-height: 1.4;
+}
+.su-text strong { color: var(--white); font-weight: 600; }
+
+/* ══════════════════════════════════════════════════════
+   BRANCH INTEGRATION
+══════════════════════════════════════════════════════ */
+.branch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.branch {
+  background: var(--panel);
+  padding: 18px 18px;
+}
+
+.branch-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.branch-flag {
+  width: 4px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.branch-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.branch-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  margin-top: 1px;
+}
+
+/* branch colors */
+.branch.army   .branch-flag { background: var(--army); }
+.branch.army   .branch-title { color: var(--army2); }
+.branch.army   .branch-sub   { color: var(--army); }
+.branch.navy   .branch-flag { background: var(--navy); }
+.branch.navy   .branch-title { color: var(--navy2); }
+.branch.navy   .branch-sub   { color: var(--navy); }
+.branch.af     .branch-flag { background: var(--af); }
+.branch.af     .branch-title { color: var(--af2); }
+.branch.af     .branch-sub   { color: var(--af); }
+
+.cap-list { list-style: none; }
+.cap-item {
+  font-size: 12px;
+  color: #85A8C0;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(30,58,90,0.5);
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  line-height: 1.35;
+}
+.cap-item:last-child { border-bottom: none; }
+
+.cap-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.branch.army  .cap-dot { background: var(--army2); }
+.branch.navy  .cap-dot { background: var(--navy2); }
+.branch.af    .cap-dot { background: var(--af2); }
+
+.cap-src {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 7.5px;
+  color: var(--muted);
+  display: block;
+  margin-top: 2px;
+}
+
+/* ══════════════════════════════════════════════════════
+   TOKEN LAYER — THE T
+══════════════════════════════════════════════════════ */
+.token-layer {
+  border: 2px solid var(--teal);
+  background: linear-gradient(135deg, rgba(26,186,170,0.06) 0%, transparent 60%);
+  animation: tokenBorder 4s ease-in-out infinite;
+}
+@keyframes tokenBorder {
+  0%,100% { border-color: var(--teal); box-shadow: 0 0 0 rgba(26,186,170,0); }
+  50%     { border-color: var(--teal2); box-shadow: 0 0 18px rgba(26,186,170,0.15); }
+}
+
+.token-header {
+  background: rgba(26,186,170,0.1);
+  border-bottom: 1px solid rgba(26,186,170,0.3);
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.token-designation {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--teal);
+  letter-spacing: 3px;
+}
+
+.token-desc {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--teal);
+  opacity: 0.7;
+  letter-spacing: 1.5px;
+}
+
+.token-badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  border: 1px solid var(--teal);
+  color: var(--teal);
+  padding: 3px 10px;
+  letter-spacing: 2px;
+  animation: pillPulse 2s ease-in-out infinite;
+}
+
+.token-cells {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: rgba(26,186,170,0.12);
+}
+
+.token-cell {
+  background: var(--bg2);
+  padding: 16px 16px;
+  transition: background 0.2s;
+  cursor: default;
+}
+.token-cell:hover {
+  background: rgba(26,186,170,0.08);
+}
+
+.tc-num {
+  font-family: 'Orbitron', monospace;
+  font-size: 22px;
+  font-weight: 900;
+  color: rgba(26,186,170,0.15);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.tc-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--teal2);
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.tc-body {
+  font-size: 12px;
+  color: #7AACBC;
+  line-height: 1.45;
+}
+.tc-body strong { color: var(--white); }
+
+.tc-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  color: rgba(26,186,170,0.5);
+  letter-spacing: 1.5px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(26,186,170,0.15);
+  padding-top: 5px;
+}
+
+/* ══════════════════════════════════════════════════════
+   SCENARIO FUTURES PANEL (from CNA)
+══════════════════════════════════════════════════════ */
+.futures-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.future-cell {
+  background: var(--panel);
+  padding: 14px 18px;
+  transition: background 0.2s;
+}
+.future-cell:hover { background: #132A44; }
+
+.fc-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8.5px;
+  letter-spacing: 2px;
+  margin-bottom: 5px;
+}
+.fc-label.s1 { color: var(--red2); }
+.fc-label.s2 { color: var(--gold); }
+.fc-label.s3 { color: var(--army2); }
+.fc-label.s4 { color: var(--grey); }
+
+.fc-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 5px;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.fc-body { font-size: 12px; color: #7A9AB8; line-height: 1.45; }
+
+/* ══════════════════════════════════════════════════════
+   SECTION WRAPPERS
+══════════════════════════════════════════════════════ */
+.sec { margin: 0; }
+
+/* ══════════════════════════════════════════════════════
+   FOOTER
+══════════════════════════════════════════════════════ */
+.footer {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-top: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8.5px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.footer span { color: var(--grey); }
+
+/* ══════════════════════════════════════════════════════
+   BADGES
+══════════════════════════════════════════════════════ */
+.badge-intel { border-color: var(--ice); color: var(--ice); }
+.badge-sof   { border-color: var(--gold); color: var(--gold); }
+.badge-rnd   { border-color: var(--army2); color: var(--army2); }
+.badge-gov   { border-color: var(--af2); color: var(--af2); }
+
+/* ══════════════════════════════════════════════════════
+   ANIMATION UTILS
+══════════════════════════════════════════════════════ */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.reveal.vis { opacity: 1; transform: translateY(0); }
+
+/* ── RESPONSIVE ── */
+@media(max-width:720px) {
+  .divisions-grid { grid-template-columns: 1fr 1fr; }
+  .branch-grid    { grid-template-columns: 1fr; }
+  .token-cells    { grid-template-columns: 1fr 1fr; }
+  .futures-grid   { grid-template-columns: 1fr; }
+  .council-row    { grid-template-columns: 1fr; }
+  .header-block   { grid-template-columns: 1fr; }
+}
+@media(max-width:480px) {
+  .divisions-grid { grid-template-columns: 1fr; }
+  .token-cells    { grid-template-columns: 1fr; }
+  .desig-code     { font-size: 16px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="dc"></canvas>
+
+<div class="wrap">
+
+  <!-- ─────────────────────────────────────────
+       DESIGNATION BANNER
+  ───────────────────────────────────────── -->
+  <div class="desig-banner">
+    <div>
+      <div class="desig-code">NQBAAT</div>
+      <div class="desig-full">
+        <span>N</span>ATIONAL &nbsp;<span>Q</span>UALITATIVE &nbsp;<span>B</span>LOCKCHAIN &nbsp;<span>A</span>NALYSIS, &nbsp;<span>A</span>SSESSMENT &nbsp;&amp; &nbsp;<span>T</span>OKENIZATION<br>
+        CONTROL REF: NQ-BAAT-2026-SOF-001 &nbsp;·&nbsp; DERIVED: NQBAAA (CNA 2019) + JSOU TWIN BAA
+      </div>
+    </div>
+    <div class="desig-right">
+      <div class="status-pill">ACTIVE</div>
+      <div>ZULU &nbsp;<span class="desig-clock" id="clk">——:——:——</span></div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────
+       HEADER
+  ───────────────────────────────────────── -->
+  <div class="header-block reveal">
+    <div>
+      <div class="header-title">Command Architecture &amp; Organizational Structure</div>
+      <div class="header-sub">
+        Special Operations Forces Cryptocurrency &amp; Social Token Intelligence Framework<br>
+        <span style="font-size:13px;color:var(--grey);">Authorized by USSOCOM / JSOU · Grounded in NQBAAA research lineage</span>
+      </div>
+      <div class="lineage">
+        <span class="lnode">JSOU TWIN BAA 2018</span>
+        <span class="lnode-arrow">→</span>
+        <span class="lnode">CNA NQBAAA 2019</span>
+        <span class="lnode-arrow">→</span>
+        <span class="lnode">NPS MBA 2022</span>
+        <span class="lnode-arrow">→</span>
+        <span class="lnode">MIT SOFTWAR 2023</span>
+        <span class="lnode-arrow">→</span>
+        <span class="lnode active">NQBAAT 2026</span>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div>AUTHORITY &nbsp;<span class="v">USSOCOM · JSOU</span></div>
+      <div>SOURCES &nbsp;<span class="v">9 OSINT DOCUMENTS</span></div>
+      <div>BRANCHES &nbsp;<span class="v">ARMY · NAVY · AIR FORCE</span></div>
+      <div>PARENT CODE &nbsp;<span class="v">NQBAAA / CRM-2019</span></div>
+      <div>NEW LAYER &nbsp;<span class="v" style="color:var(--teal)">TOKENIZATION (T)</span></div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────
+       LEVEL 1 — COMMAND COUNCIL
+  ───────────────────────────────────────── -->
+  <div class="v-conn short reveal"></div>
+
+  <div class="sec reveal">
+    <div class="level-label">
+      <span class="level-tag">LEVEL 01 · COMMAND COUNCIL</span>
+      <div class="level-line"></div>
+    </div>
+    <div class="council-row">
+
+      <div class="council-node">
+        <div class="cn-rank">DEPUTY DIRECTOR</div>
+        <div class="cn-title">CNA Research Lead</div>
+        <div class="cn-body">Oversees analytical methodology, maintains NQBAAA research lineage, coordinates with FinCEN and OFAC on threat-finance intelligence products.</div>
+      
