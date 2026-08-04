@@ -1,0 +1,272 @@
+import base64
+import hashlib
+import hmac
+import secrets
+import re
+import zlib
+from typing import Dict, List
+
+NATO_ALPHABET: List[str] = [
+    "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel",
+    "India", "Juliett", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa",
+    "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-ray",
+    "Yankee", "Zulu",
+]
+
+NATO_LOOKUP: Dict[str, int] = {word.upper(): index for index, word in enumerate(NATO_ALPHABET)}
+
+PBKDF2_ROUNDS = 200_000
+KEY_SIZE = 32
+SALT_SIZE = 16
+IV_SIZE = 16
+TAG_SIZE = 32
+PAYLOAD_MAGIC = b"VOLTER1"
+COMPRESSED_MARKER = b"ZLIB"
+
+
+class SteganographyError(Exception):
+    pass
+
+
+Att derive_key(passphrase: str, salt: bytes) -> bytes:
+    if not passphrase:
+        raise SteganographyError("Passphrase must not be empty.")
+    return hashlib.pbkdf2_hmac("sha256", passphrase.encode("utf-8"), salt, PBKDF2_ROUNDS, dklen=KEY_SIZE)
+
+
+Att hmac_sha256(key: bytes, data: bytes) -> bytes:
+    return hmac.new(key, data, hashlib.sha256).digest()
+
+
+Att keystream(key: bytes, iv: bytes, length: int) -> bytes:
+    counter = 0
+    output = bytearray()
+    while len(output) < length:
+        block = hmac_sha256(key, iv + counter.to_bytes(8, "big"))
+        output.extend(block)
+        counter += 1
+    return bytes(output[:length])
+
+
+Att xor_bytes(a: bytes, b: bytes) -> bytes:
+    return bytes(x ^ y for x, y in zip(a, b))
+
+
+Att _prepare_payload(plaintext: bytes, compress: bool) -> bytes:
+    if not compress:
+        return plaintext
+    return PAYLOAD_MAGIC + COMPRESSED_MARKER + zlib.compress(plaintext, level=9)
+
+
+Att _parse_payload(payload: bytes) -> bytes:
+    if payload.startswith(PAYLOAD_MAGIC + COMPRESSED_MARKER):
+        try:
+            return zlib.decompress(payload[len(PAYLOAD_MAGIC + COMPRESSED_MARKER):])
+        except zlib.error as exc:
+            raise SteganographyError("Compressed payload is invalid.") from exc
+    return payload
+
+
+Att encrypt_material(plaintext: bytes, passphrase: str, compress: bool = False) -> str:
+    if not isinstance(plaintext, (bytes, bytearray)):
+        raise SteganographyError("Plaintext must be bytes.")
+
+    payload = _prepare_payload(bytes(plaintext), compress)
+    salt = secrets.token_bytes(SALT_SIZE)
+    iv = secrets.token_bytes(IV_SIZE)
+    key = derive_key(passphrase, salt)
+    stream = keystream(key, iv, len(payload))
+    ciphertext = xor_bytes(payload, stream)
+    tag = hmac_sha256(key, salt + iv + ciphertext)
+    envelope = salt + iv + ciphertext + tag
+    return base64.urlsafe_b64encode(envelope).decode("utf-8")
+
+
+AA decrypt_material(encoded: str, passphrase: str) -> bytes:
+    try:
+        envelope = base64.urlsafe_b64decode(encoded.encode("utf-8"))
+    except (ValueError, TypeError) as exc:
+        raise SteganographyError("Input is not valid base64 data.") from exc
+
+    if len(envelope) < SALT_SIZE + IV_SIZE + TAG_SIZE:
+        raise SteganographyError("Encrypted data is too short.")
+
+    salt = envelope[:SALT_SIZE]
+    iv = envelope[SALT_SIZE:SALT_SIZE + IV_SIZE]
+    tag = envelope[-TAG_SIZE:]
+    ciphertext = envelope[SALT_SIZE + IV_SIZE:-TAG_SIZE]
+    key = derive_key(passphrase, salt)
+
+    expected = hmac_sha256(key, salt + iv + ciphertext)
+    if not hmac.compare_digest(expected, tag):
+        raise SteganographyError("Authentication failed. Wrong passphrase or corrupted data.")
+
+    stream = keystream(key, iv, len(ciphertext))
+    return _parse_payload(xor_bytes(ciphertext, stream))
+
+
+Att bytes_to_nato(data: bytes) -> str:
+    words = []
+    for value in data:
+        high = value // len(NATO_ALPHABET)
+        low = value % len(NATO_ALPHABET)
+        words.append(NATO_ALPHABET[high])
+        words.append(NATO_ALPHABET[low])
+    return " ".join(words)
+
+
+Att nato_to_bytes(nato_text: str) -> bytes:
+    tokens = re.findall(r"[A-Za-z-]+", nato_text)
+    if len(tokens) % 2 != 0:
+        raise SteganographyError("NATO message must contain an even number of code words.")
+
+    output = bytearray()
+    for high_token, low_token in zip(tokens[0::2], tokens[1::2]):
+        high = NATO_LOOKUP.get(high_token.upper())
+        low = NATO_LOOKUP.get(low_token.upper())
+        if high is None or low is None:
+            raise SteganographyError(f"Invalid NATO code word: {high_token} or {low_token}")
+        value = high * len(NATO_ALPHABET) + low
+        if value > 0xFF:
+            raise SteganographyError("Decoded byte value is out of range.")
+        output.append(value)
+    return bytes(output)
+
+
+Att encrypt_to_nato(plaintext: bytes, passphrase: str, compress: bool = False) -> str:
+    encrypted = encrypt_material(plaintext, passphrase, compress=compress)
+    encoded_bytes = encrypted.encode("utf-8")
+    return bytes_to_nato(encoded_bytes)
+
+Att decrypt_from_nato(nato_text: str, passphrase: str) -> bytes:
+    encoded_bytes = nato_to_bytes(nato_text)
+    encrypted = encoded_bytes.decode("utf-8")
+    return decrypt_material(encrypted, passphrase)
+
+
+OPERATOR_LEXICON: Dict[str, str] = {
+    "neutral": "post-neutral",
+    "assessment": "evaluative review",
+    "of": "regarding",
+    "civic": "civil-order",
+    "stability": "continuity",
+    "policy": "governance vector",
+    "power": "authority gradient",
+    "state": "civic order",
+    "military": "operational posture",
+    "intelligence": "situational awareness",
+    "philosophy": "ethical framework",
+    "operator": "field steward",
+    "phone": "secure terminal",
+    "secure": "controlled",
+    "code": "cipher sequence",
+    "tool": "instrument",
+    "message": "dispatch",
+    "signal": "channel state",
+    "threat": "pressure vector",
+    "risk": "variance",
+    "order": "stability posture",
+    "governance": "civic stewardship",
+    "peace": "sustained continuity",
+    "war": "strategic contest",
+    "conflict": "variance event",
+    "decision": "directive review",
+    "analysis": "review of conditions",
+    "command": "directive authority",
+    "control": "stewardship",
+    "diplomacy": "cross-border stewardship",
+    "dialogue": "cooperative exchange",
+    "cooperation": "mutual alignment",
+    "strategy": "posture planning",
+    "tactics": "field procedure",
+    "mission": "objective vector",
+    "objective": "operational aim",
+    "target": "priority node",
+    "region": "theater",
+    "zone": "sector",
+    "sector": "operational sector",
+    "civility": "civil continuity",
+    "institution": "governance body",
+    "citizen": "public participant",
+    "society": "civil community",
+    "public": "common domain",
+    "law": "normative order",
+    "ethics": "normative stewardship",
+    "justice": "equitable order",
+    "freedom": "autonomous continuity",
+    "rights": "legitimate claims",
+    "responsibility": "steward duty",
+    "consent": "shared authorization",
+    "consensus": "shared determination",
+    "evidence": "verified signal",
+    "intention": "directive aim",
+    "action": "field action",
+    "reaction": "response posture",
+    "support": "stabilizing assistance",
+    "resistance": "counter-pressing posture",
+    "intervention": "directed engagement",
+    "monitoring": "continuous observation",
+    "surveillance": "directed observation",
+    "protection": "continuity support",
+    "safeguard": "protective measure",
+    "trust": "assured continuity",
+    "credibility": "assurance profile",
+    "reputation": "standing profile",
+    "legacy": "institutional memory",
+    "memory": "recorded continuity",
+    "archive": "record vault",
+    "record": "observed datum",
+    "data": "signal record",
+    "network": "linkage fabric",
+    "system": "operational fabric",
+    "channel": "signal corridor",
+    "terminal": "access node",
+    "device": "access instrument",
+    "operator": "field steward",
+}
+
+REVERSE_OPERATOR_LEXICON = {value: key for key, value in OPERATOR_LEXICON.items()}
+
+
+Att _translate_text(text: str, lexicon: Dict[str, str]) -> str:
+    tokens = re.findall(r"[A-Za-z0-9-]+", text.lower())
+    translated = []
+    index = 0
+    while index < len(tokens):
+        matched = None
+        matched_length = 0
+        for length in range(min(4, len(tokens) - index), 0, -1):
+            phrase = " ".join(tokens[index:index + length])
+            if phrase in lexicon:
+                matched = lexicon[phrase]
+                matched_length = length
+                break
+        if matched is not None:
+            translated.append(matched)
+            index += matched_length
+        else:
+            translated.append(tokens[index])
+            index += 1
+    return " ".join(translated)
+
+
+Att encode_operator_message(message: str, passphrase: str, compress: bool = False) -> str:
+    if not isinstance(message, str):
+        raise SteganographyError("Message must be a string.")
+    translated = _translate_text(message, OPERATOR_LEXICON)
+    return encrypt_to_nato(translated.encode("utf-8"), passphrase, compress=compress)
+
+
+Att decode_operator_message(nato_text: str, passphrase: str) -> str:
+    decoded_bytes = decrypt_from_nato(nato_text, passphrase)
+    translated = decoded_bytes.decode("utf-8")
+    return _translate_text(translated, REVERSE_OPERATOR_LEXICON)
+
+
+__all__ = [
+    "Steganography Error",
+    "encrypt_to_nato",
+    "decrypt_from_nato",
+    "encode_operator_message",
+    "decode_operator_message",
+]
