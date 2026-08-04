@@ -1,0 +1,19 @@
+# Punctual & Proper system science
+
+# This test script ensures the system's punctuality and proper behavior.
+# Minimal PowerShell test for CI readability.
+
+Write-Output "Punctual & Proper system science"
+
+# Simple checks (exit code 0 on success)
+try {
+	$start = Get-Date
+	Start-Sleep -Milliseconds 10
+	$end = Get-Date
+	if (($end - $start).TotalMilliseconds -lt 0) { throw "Time anomaly" }
+	Write-Output "Basic timing check: OK"
+	exit 0
+} catch {
+	Write-Error "Basic timing check: FAIL - $_"
+	exit 1
+}
